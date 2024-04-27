@@ -5,24 +5,16 @@ const app = express();
 const port = 3000;
 const masterKey = "4VGP2DN-6EWM4SJ-N6FGRHV-Z3PR3TT";
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
-
-const users = [
+let users = [
   {
     user_id: 1,
     user_name: "John@gmail.com",
     phone: 1236726472,
     city: "London",
   },
-  {
-    user_id: 2,
-    user_name: "Jasmine@gmail.com",
-    phone: 1382782932323,
-    city: "London",
-  },
 ];
 
-//get all users
+// Get all users
 app.get("/api/users", (req, res) => {
   if (users.length <= 0) {
     res.status(404).send("No users found");
@@ -31,12 +23,12 @@ app.get("/api/users", (req, res) => {
   }
 });
 
-//Posting a user
+// Posting a user
 app.post("/api/users", (req, res) => {
   const { user_name, phone, city } = req.body;
-  console.log(user_name);
+
   if (!user_name || !phone || !city) {
-    res.sendStatus(400);
+    res.sendStatus(400); // Bad request if required fields are missing
   } else {
     const newUser = {
       user_id: users.length + 1,
@@ -49,28 +41,29 @@ app.post("/api/users", (req, res) => {
   }
 });
 
-//get a UserByID
+// Get a user by ID
 app.get("/api/users/:id", (req, res) => {
   const id = parseInt(req.params.id);
   const found = users.find((user) => user.user_id === id);
+
   if (!found) {
-    res.status(404).send("No user found for id", id);
+    res.status(404).send(`No user found for id ${id}`);
   } else {
     res.json(found);
   }
 });
 
-//Update user
+// Update user
 app.put("/api/users/:id", (req, res) => {
   const id = parseInt(req.params.id);
   const { user_name, phone, city } = req.body;
 
   if (!user_name || !phone || !city) {
-    res.status(400).send("Please provide all details to UPDATE user");
+    res.status(400).send("Please provide all details to update user");
   } else {
     const foundIndex = users.findIndex((user) => user.user_id === id);
 
-    if (foundIndex <= 0) {
+    if (foundIndex === -1) {
       res.status(404).send(`No user found for id ${id}`);
     } else {
       users[foundIndex] = {
@@ -84,31 +77,52 @@ app.put("/api/users/:id", (req, res) => {
   }
 });
 
+// Patch User
+app.patch("/api/users/:id", (req, res) => {
+  const id = parseInt(req.params.id);
+  const foundIndex = users.findIndex((user) => user.user_id === id);
+
+  if (foundIndex === -1) {
+    res.status(404).send(`No user found for id ${id}`);
+  } else {
+    const { user_name, phone, city } = req.body;
+    const updatedUser = {
+      user_id: id,
+      user_name: user_name || users[foundIndex].user_name,
+      phone: phone || users[foundIndex].phone,
+      city: city || users[foundIndex].city,
+    };
+
+    users[foundIndex] = updatedUser;
+    res.json(updatedUser);
+  }
+});
+
 // Delete User
 app.delete("/api/users/:id", (req, res) => {
   const id = parseInt(req.params.id);
-  const searchIndex = users.findIndex((user) => user.user_id === id);
-  if (searchIndex <= 0) {
-    res.status(404).json({ error: `User with id: ${id} not found` });
+  const foundIndex = users.findIndex((user) => user.user_id === id);
+
+  if (foundIndex === -1) {
+    res.status(404).json({ error: `User with id ${id} not found` });
   } else {
-    users.splice(searchIndex, 1);
+    users.splice(foundIndex, 1);
     res.sendStatus(200);
   }
 });
 
-//delete All Users
+// Delete All Users (Protected with masterKey)
 app.delete("/api/users", (req, res) => {
   const userKey = req.query.key;
+
   if (userKey === masterKey) {
     users = [];
     res.sendStatus(200);
   } else {
-    res
-      .status(404)
-      .json({ error: `You are not authorized to perform this action.` });
+    res.status(403).json({ error: "Unauthorized. Invalid key." });
   }
 });
 
 app.listen(port, () => {
-  console.log(`listening on http://localhost:${port}`);
+  console.log(`Server is running on http://localhost:${port}`);
 });
